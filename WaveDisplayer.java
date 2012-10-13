@@ -14,6 +14,11 @@ import java.awt.GraphicsEnvironment;
 import java.awt.image.BufferStrategy;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 //import wavelet.Wavelet;
 
 /**
@@ -28,6 +33,9 @@ public class WaveDisplayer {
     private double incTime;
     private double t;
     private boolean refOrigin = true;
+
+    private static boolean maxdisp=false;
+    private static String filename="wavelets.cnf";
 
     public void addWaves(Wavelet w) {
         if (c < MAX_WAVES - 1) {
@@ -80,12 +88,16 @@ public class WaveDisplayer {
         DisplayMode[] dms=device.getDisplayModes();
         for(int i=0;i<dms.length;i++)
         	System.err.println(dms[i].getWidth()+"x"+dms[i].getHeight()+":"+dms[i].getBitDepth()+","+dms[i].getRefreshRate());
+        DisplayMode d=dms[0];
         for(int i=0;i<dms.length;i++){
             if(dms[i].getWidth()==832)
-                if(dms[i].getBitDepth()>=16)
-                return dms[i];
+                d= dms[i];
         }
-        return dms[0];
+        if(maxdisp){
+        	d=dms[0];
+        	}
+        System.err.println("Chosen mode: "+d.getWidth()+"x"+d.getHeight());
+        return d;
     }
 
     void setupScreen() {
@@ -111,11 +123,17 @@ public class WaveDisplayer {
         System.out.println(", rendered:" + framesRendered);
         System.exit(0);
     }
+    
+    public void finalize(){
+    	unsetupScreen();
+    }
+    
     //int disp[] = new int[MAX_WAVES];
     private int framesRendered;
 
     void render(Graphics g) {
         double y = 0;
+        //g.clearRect(0,0,100,100);
         //render each pixel
         for (int h = 0; h < mainFrame.getBounds().getWidth(); h++) {
             for (int k = 0; k < mainFrame.getBounds().getHeight(); k++) {
@@ -160,16 +178,63 @@ public class WaveDisplayer {
     }
 
     public static void main(String[] args) {
+    	for(int i=0;i<args.length;i++){
+    		if(args[i].equals("-maxdisp") || args[i].equals("-md")){
+    			maxdisp=true;
+    			}
+    		if(args[i].equals("-f")){
+    			if((i+1)<args.length){
+    				filename=args[i+1];
+    				}
+    			else{
+    				System.err.println("Filename not supplied");
+    				}
+    		}
+    		if(args[i].equals("-help") || args[i].equals("-h")){
+    			System.out.println("Usage\nWaveDisplayer <options>\n-maxdisp,-md\tMaximum display resolution\n-f <filename>\tUse <filename> for wavelets data\n-help,-h\t\tHelp");
+    			return;
+    		}
+    	}
+    
         WaveDisplayer wd = new WaveDisplayer();
-        Wavelet w = new Wavelet(30, 50, 10, 5, 23,330,2000); //x,y,amp,freq,phase
+/*        Wavelet w = new Wavelet(30, 50, 10, 5, 23,330,2000); //x,y,amp,freq,phase
         Wavelet w2 = new Wavelet(100, 350, 40, 63, 0,330,3000);
         Wavelet w3=new Wavelet(500, 350, 20, 6, 40,630,5000);
         w.setDamp(0);
         w2.setDamp(0);
         wd.addWaves(w);
         wd.addWaves(w2);
-        wd.addWaves(w3);
-
+        wd.addWaves(w3);*/
+        try{
+        BufferedReader in=new BufferedReader(new FileReader(new File(filename)));
+        String s=";";
+        while(!(s=in.readLine()).equals("")){
+        	String params[]=s.split(" ");
+        	
+        	double x=Double.parseDouble(params[0]);
+        	double y=Double.parseDouble(params[1]);
+        	double amp=Double.parseDouble(params[2]);
+        	double freq=Double.parseDouble(params[3]);
+        	double phase=Double.parseDouble(params[4]);
+        	double v=Double.parseDouble(params[5]);
+        	double lambda=Double.parseDouble(params[6]);
+        	Wavelet w=new Wavelet(x,y,amp,freq,phase,v,lambda);
+        	System.out.println(w);
+        	wd.addWaves(w);
+        }
+	}
+	catch(FileNotFoundException e){
+		e.printStackTrace();
+		System.err.println(filename+" not found");
+		wd.unsetupScreen();
+		return;
+	}
+	catch(IOException e){
+		e.printStackTrace();
+	}
+	catch(Exception e){
+		e.printStackTrace();
+	}
 //        for (double f = 0; f < 100; f+=33.3333) {
 //            for(int i=0;i<32;i++){
 //            Graphics g = wd.bufStrat.getDrawGraphics();
@@ -192,9 +257,11 @@ public class WaveDisplayer {
         wd.startRender(wd, 200);
            //while(wd.framesRendered<200){}
         //wd.unsetupScreen();
-
-
-
+	try{
+	System.in.read();
+	}catch(IOException e){
+		e.printStackTrace();
+	}
     }
 
     class RenderThread extends Thread {
