@@ -40,4 +40,9 @@ public double calculateY(double h, double k, double t){
 	double y=getAmp()*Math.sin(2*Math.PI*(v*d-t)/lambda+phi);
 	return y;
 }
+
+public String toString(){
+	return "x:"+x+"y:"+y+"amp:"+a+"freq:"+f+"phase:"+phi+"v:"+v+"lambda:"+lambda;
+}
+
 }
