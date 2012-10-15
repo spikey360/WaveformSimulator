@@ -36,7 +36,14 @@ public class WaveDisplayer {
 
     private static boolean maxdisp=false;
     private static String filename="wavelets.cnf";
-
+    private static double timeInc=100;
+    private static long sleep=0;
+    
+    private Frame mainFrame;
+    private BufferStrategy bufStrat;
+    private GraphicsDevice device;
+    private int framesRendered;
+    
     public void addWaves(Wavelet w) {
         if (c < MAX_WAVES - 1) {
             waves[c++] = w;
@@ -80,21 +87,28 @@ public class WaveDisplayer {
         // System.err.println("y:"+y+",k:"+k+"y/maxAmp:"+(y/maxAmp));
         return k;
     }
-    private Frame mainFrame;
-    private BufferStrategy bufStrat;
-    private GraphicsDevice device;
+    
 
     DisplayMode chooseMode(){
         DisplayMode[] dms=device.getDisplayModes();
         for(int i=0;i<dms.length;i++)
         	System.err.println(dms[i].getWidth()+"x"+dms[i].getHeight()+":"+dms[i].getBitDepth()+","+dms[i].getRefreshRate());
         DisplayMode d=dms[0];
-        for(int i=0;i<dms.length;i++){
-            if(dms[i].getWidth()==832)
-                d= dms[i];
-        }
+        
         if(maxdisp){
-        	d=dms[0];
+        	int mw=0; int c=0;
+        	for(int i=0;i<dms.length;i++){
+        		if(mw<dms[i].getWidth()){
+        				c=i;
+        				mw=dms[i].getWidth();
+        			}
+        	}
+        	d=dms[c];
+        	}else{
+        		for(int i=0;i<dms.length;i++){
+         		   if(dms[i].getWidth()==832)
+         		       d= dms[i];
+        		}
         	}
         System.err.println("Chosen mode: "+d.getWidth()+"x"+d.getHeight());
         return d;
@@ -129,7 +143,7 @@ public class WaveDisplayer {
     }
     
     //int disp[] = new int[MAX_WAVES];
-    private int framesRendered;
+    
 
     void render(Graphics g) {
         double y = 0;
@@ -168,8 +182,9 @@ public class WaveDisplayer {
             }
         }
 	//display time
-	g.drawString("Time: "+t,10,10);
-        framesRendered++; //debug
+	framesRendered++; //debug
+	g.drawString("Frame: "+framesRendered,10,10);
+	incrementTime(timeInc);
     }
 
     void startRender(WaveDisplayer wd, long sleep){
@@ -190,8 +205,24 @@ public class WaveDisplayer {
     				System.err.println("Filename not supplied");
     				}
     		}
+    		if(args[i].equals("-t")){
+    			if((i+1)<args.length){
+    				timeInc=Double.parseDouble(args[i+1]);
+    				}
+    			else{
+    				System.err.println("Time increment invalid");
+    				}
+    		}
+    		if(args[i].equals("-s")){
+    			if((i+1)<args.length){
+    				sleep=Long.parseLong(args[i+1]);
+    				}
+    			else{
+    				System.err.println("Invalid sleep time");
+    				}
+    		}
     		if(args[i].equals("-help") || args[i].equals("-h")){
-    			System.out.println("Usage\nWaveDisplayer <options>\n-maxdisp,-md\tMaximum display resolution\n-f <filename>\tUse <filename> for wavelets data\n-help,-h\t\tHelp");
+    			System.out.println("Usage\nWaveDisplayer <options>\n-maxdisp,-md\tMaximum display resolution\n-f <filename>\tUse <filename> for wavelets data\n-help,-h\tHelp\n-t <time>\tTime to increment for waves\n-s <timeInMillis> Time to sleep after each frame");
     			return;
     		}
     	}
@@ -254,7 +285,7 @@ public class WaveDisplayer {
 
 //
 
-        wd.startRender(wd, 200);
+        wd.startRender(wd, sleep);
            //while(wd.framesRendered<200){}
         //wd.unsetupScreen();
 	try{
@@ -284,17 +315,17 @@ public class WaveDisplayer {
         public void run() {
             while (terminate == false) {
                 if(!wd.bufStrat.contentsLost()){
-                //System.err.println("0");
+                
                 Graphics g = wd.bufStrat.getDrawGraphics();
-                //System.err.println("1");
+                
                 wd.render(g);
-                //System.err.println("2");
+                
                 wd.bufStrat.show();
-                //System.err.println("3");
+                
                 g.dispose();
-                //System.err.println("4");
-                wd.incrementTime(1);
-                //System.err.println("5");
+                
+                //wd.incrementTime(100); //done in render() function
+                
                 }
                 try {
                     sleep(sleepTime);
