@@ -15,7 +15,7 @@ import java.awt.image.BufferStrategy;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.io.BufferedReader;
-import java.io.FileReader;
+import java.io.InputStreamReader;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -38,11 +38,19 @@ public class WaveDisplayer {
     private static String filename="wavelets.cnf";
     private static double timeInc=100;
     private static long sleep=0;
+    private static int maxframe=-1;
     
     private Frame mainFrame;
     private BufferStrategy bufStrat;
     private GraphicsDevice device;
     private int framesRendered;
+    private RenderThread rt;
+    private int renderWidth;
+    private int renderHeight;
+    
+    private int logline=1;
+    private int logspacingPix=20;
+    private int logx=10;
     
     public void addWaves(Wavelet w) {
         if (c < MAX_WAVES - 1) {
@@ -110,7 +118,7 @@ public class WaveDisplayer {
          		       d= dms[i];
         		}
         	}
-        System.err.println("Chosen mode: "+d.getWidth()+"x"+d.getHeight());
+        System.err.println("Chosen mode: "+(renderWidth=d.getWidth())+"x"+(renderHeight=d.getHeight()));
         return d;
     }
 
@@ -134,7 +142,7 @@ public class WaveDisplayer {
 
     void unsetupScreen() {
         device.setFullScreenWindow(null);
-        System.out.println(", rendered:" + framesRendered);
+        System.out.println("Frames rendered:" + (framesRendered-1));
         System.exit(0);
     }
     
@@ -181,18 +189,22 @@ public class WaveDisplayer {
                 }
             }
         }
+        logline=1; logx=10; logspacingPix=10;
 	//display time
 	framesRendered++; //debug
-	g.drawString("Frame: "+framesRendered,10,10);
+	g.drawString("Frame: "+framesRendered,logx,(logline++)*logspacingPix);
+	
+	g.drawString("Rendering @ "+renderWidth+"x"+renderHeight,logx,(logline++)*logspacingPix);
 	incrementTime(timeInc);
     }
 
     void startRender(WaveDisplayer wd, long sleep){
-        RenderThread x=new RenderThread(wd, sleep);
-        x.start();
+        rt=new RenderThread(wd, sleep);
+        rt.start();
     }
 
     public static void main(String[] args) {
+    	System.out.println("WaveSimulator - spikey360\nspikey360@yahoo.co.in");
     	for(int i=0;i<args.length;i++){
     		if(args[i].equals("-maxdisp") || args[i].equals("-md")){
     			maxdisp=true;
@@ -203,6 +215,7 @@ public class WaveDisplayer {
     				}
     			else{
     				System.err.println("Filename not supplied");
+    				return;
     				}
     		}
     		if(args[i].equals("-t")){
@@ -221,6 +234,14 @@ public class WaveDisplayer {
     				System.err.println("Invalid sleep time");
     				}
     		}
+    		if(args[i].equals("-mf")){
+    			if((i+1)<args.length){
+    				maxframe=Integer.parseInt(args[i+1]);
+    				}
+    			else{
+    				System.err.println("Invalid frame limit");
+    				}
+    		}
     		if(args[i].equals("-help") || args[i].equals("-h")){
     			System.out.println("Usage\nWaveDisplayer <options>\n-maxdisp,-md\tMaximum display resolution\n-f <filename>\tUse <filename> for wavelets data\n-help,-h\tHelp\n-t <time>\tTime to increment for waves\n-s <timeInMillis> Time to sleep after each frame");
     			return;
@@ -237,7 +258,7 @@ public class WaveDisplayer {
         wd.addWaves(w2);
         wd.addWaves(w3);*/
         try{
-        BufferedReader in=new BufferedReader(new FileReader(new File(filename)));
+        BufferedReader in=new BufferedReader(new InputStreamReader(WaveDisplayer.class.getResourceAsStream(filename)));
         String s=";";
         while(!(s=in.readLine()).equals("")){
         	String params[]=s.split(" ");
@@ -286,13 +307,9 @@ public class WaveDisplayer {
 //
 
         wd.startRender(wd, sleep);
-           //while(wd.framesRendered<200){}
-        //wd.unsetupScreen();
-	try{
-	System.in.read();
-	}catch(IOException e){
-		e.printStackTrace();
-	}
+        while(!wd.rt.isTerminated());
+        
+	
     }
 
     class RenderThread extends Thread {
@@ -304,6 +321,10 @@ public class WaveDisplayer {
         void terminate(){
             terminate=true;
         }
+        
+        public boolean isTerminated(){
+        	return terminate;
+        }
 
         RenderThread(WaveDisplayer z, long sleep) {
             wd = z;
@@ -313,7 +334,7 @@ public class WaveDisplayer {
 
         @Override
         public void run() {
-            while (terminate == false) {
+            while (wd.framesRendered<=wd.maxframe) {
                 if(!wd.bufStrat.contentsLost()){
                 
                 Graphics g = wd.bufStrat.getDrawGraphics();
@@ -335,6 +356,8 @@ public class WaveDisplayer {
                 }
             //k++;
             }
+            terminate();
+            wd.unsetupScreen();
         }
     }
 }
