@@ -35,6 +35,7 @@ public class WaveDisplayer {
     private boolean refOrigin = true;
 
     private static boolean maxdisp=false;
+    private static boolean scsaver=false;
     private static String filename="wavelets.cnf";
     private static double timeInc=100;
     private static long sleep=0;
@@ -181,7 +182,7 @@ public class WaveDisplayer {
 
             }
         }
-        if (refOrigin) {
+        if (refOrigin && !scsaver) {
             for (int n = 0; n < MAX_WAVES; n++) {
                 if (waves[n] != null) {
                     g.setColor(Color.WHITE);
@@ -192,9 +193,10 @@ public class WaveDisplayer {
         logline=1; logx=10; logspacingPix=10;
 	//display time
 	framesRendered++; //debug
-	g.drawString("Frame: "+framesRendered,logx,(logline++)*logspacingPix);
-	
+	if(!scsaver){
+	g.drawString("Frame: "+framesRendered+" / "+ maxframe,logx,(logline++)*logspacingPix);
 	g.drawString("Rendering @ "+renderWidth+"x"+renderHeight,logx,(logline++)*logspacingPix);
+	}
 	incrementTime(timeInc);
     }
 
@@ -242,12 +244,19 @@ public class WaveDisplayer {
     				System.err.println("Invalid frame limit");
     				}
     		}
+    		if(args[i].equals("-ss")){
+    			scsaver=true;
+    			
+    		}
     		if(args[i].equals("-help") || args[i].equals("-h")){
-    			System.out.println("Usage\nWaveDisplayer <options>\n-maxdisp,-md\tMaximum display resolution\n-f <filename>\tUse <filename> for wavelets data\n-help,-h\tHelp\n-t <time>\tTime to increment for waves\n-s <timeInMillis> Time to sleep after each frame");
+    			System.out.println("Usage\nWaveDisplayer <options>\n-maxdisp,-md\tMaximum display resolution\n-f <filename>\tUse <filename> for wavelets data\n-help,-h\tHelp\n-t <time>\tTime to increment for waves\n-s <timeInMillis> Time to sleep after each frame\n-mf <number>\tNumber of frames to render\n-ss\tScreen saver mode (overrides -mf)");
     			return;
     		}
     	}
-    
+    	if(scsaver)
+    		maxframe=-1;
+    		
+    		
         WaveDisplayer wd = new WaveDisplayer();
 /*        Wavelet w = new Wavelet(30, 50, 10, 5, 23,330,2000); //x,y,amp,freq,phase
         Wavelet w2 = new Wavelet(100, 350, 40, 63, 0,330,3000);
@@ -334,7 +343,7 @@ public class WaveDisplayer {
 
         @Override
         public void run() {
-            while (wd.framesRendered<=wd.maxframe) {
+            while (wd.framesRendered!=wd.maxframe) {
                 if(!wd.bufStrat.contentsLost()){
                 
                 Graphics g = wd.bufStrat.getDrawGraphics();
